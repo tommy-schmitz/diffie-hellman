@@ -32,7 +32,7 @@
     iv_ciphertext.set(iv, 0);
     iv_ciphertext.set(new Uint8Array(ciphertext), 12);
 
-    return base56encode(iv_ciphertext.buffer);
+    return base58encode(iv_ciphertext.buffer);
   }
 
   /*
@@ -44,7 +44,7 @@
   */
   async function decrypt(secretKey, cipher) {
     try {
-      const arraybuffer = base56decode(cipher);
+      const arraybuffer = base58decode(cipher);
       let decrypted = await window.crypto.subtle.decrypt(
         {
           name: "AES-GCM",
@@ -136,104 +136,14 @@ await localforage.setDriver([
   localforage.LOCALSTORAGE
 ]);
 
-const base56encode = function(buffer) {
-  const BASE_62_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const alpha = BASE_62_ALPHABET;
-  const a = new Uint8Array(buffer);
-  let result = '';
-  let state = 0;
-  let i;
-  for(i=0; i<a.length*8; ++i) {
-    const bit = (a[Math.floor(i/8)] >> (i%8)) % 2;
-    state += bit << (i%23);
-    if(i % 23 === 22) {
-      result += alpha.charAt(                           state % 56);
-      result += alpha.charAt(          Math.floor(state / 56) % 56);
-      result += alpha.charAt(     Math.floor(state / 56 / 56) % 56);
-      result += alpha.charAt(Math.floor(state / 56 / 56 / 56) % 56);
-      state = 0;
-    }
-  }
+const to_b58 = function(B,A){var d=[],s="",i,j,c,n;for(i in B){j=0,c=B[i];s+=c||s.length^i?"":1;while(j in d||c){n=d[j];n=n?n*256+c:c;c=n/58|0;d[j]=n%58;j++}}while(j--)s+=A[d[j]];return s};
+const from_b58 = function(S,A){var d=[],b=[],i,j,c,n;for(i in S){j=0,c=A.indexOf(S[i]);if(c<0)return undefined;c||b.length^i?i:b.push(0);while(j in d||c){n=d[j];n=n?n*58+c:c;c=n>>8;d[j]=n%256;j++}}while(j--)b.push(d[j]);return new Uint8Array(b)};
 
-  if(i % 23 <= 5) {
-    result += alpha.charAt(state % 56);
-  } else if(i % 23 <= 11) {
-    result += alpha.charAt(                           state % 56);
-    result += alpha.charAt(          Math.floor(state / 56) % 56);
-  } else if(i % 23 <= 17) {
-    result += alpha.charAt(                           state % 56);
-    result += alpha.charAt(          Math.floor(state / 56) % 56);
-    result += alpha.charAt(     Math.floor(state / 56 / 56) % 56);
-  } else {
-    result += alpha.charAt(                           state % 56);
-    result += alpha.charAt(          Math.floor(state / 56) % 56);
-    result += alpha.charAt(     Math.floor(state / 56 / 56) % 56);
-    result += alpha.charAt(Math.floor(state / 56 / 56 / 56) % 56);
-  }
-
-  return result;
+window.base58encode = function(buffer) {
+  return to_b58(new Uint8Array(buffer), '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz');
 };
-const base56decode = function(string) {
-  const decode_one_char = function(c, i) {
-    const n = c.charCodeAt(i);
-    if(n <= 57)
-      return n - 48;
-    else if(n >= 97)
-      return n - 97 + 10;
-    else
-      return n - 65 + 36;
-  };
-  const bits = [];
-  for(let i=0; i<Math.floor(string.length/4); ++i) {
-    const state = (
-                         decode_one_char(string[4*i])
-        +           56 * decode_one_char(string[4*i+1])
-        +      56 * 56 * decode_one_char(string[4*i+2])
-        + 56 * 56 * 56 * decode_one_char(string[4*i+3])
-    );
-    for(let j=0; j<23; ++j)
-      bits.push((state >> j) % 2);
-  }
-  if(string.length % 4 === 1) {
-    const state = (
-                         decode_one_char(string[string.length - 1])
-    );
-    for(let j=0; j<6; ++j)
-      bits.push((state >> j) % 2);
-  }
-  if(string.length % 4 === 2) {
-    const state = (
-                         decode_one_char(string[string.length - 2])
-        +           56 * decode_one_char(string[string.length - 1])
-    );
-    for(let j=0; j<12; ++j)
-      bits.push((state >> j) % 2);
-  }
-  if(string.length % 4 === 3) {
-    const state = (
-                         decode_one_char(string[string.length - 3])
-        +           56 * decode_one_char(string[string.length - 2])
-        +      56 * 56 * decode_one_char(string[string.length - 1])
-    );
-    for(let j=0; j<18; ++j)
-      bits.push((state >> j) % 2);
-  }
-
-  console.log(bits);
-
-  let state = 0;
-  const result = [];
-  for(let i=0; i<bits.length; ++i) {
-    state += bits[i] << (i%8);
-    if(i % 8 === 7) {
-      result.push(state);
-      state = 0;
-    }
-  }
-  if(state !== 0)
-    throw 'oh crap';
-
-  return new Uint8Array(result).buffer;
+window.base58decode = function(string) {
+  return from_b58(string, '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz').buffer;
 };
 
 const update_model = async function() {
@@ -274,7 +184,7 @@ const update_model = async function() {
     });
   } else {
     my_public_key_div.style.display = '';
-    my_public_key_pre.innerText = base56encode(await crypto.subtle.exportKey('raw', my_keys.publicKey));
+    my_public_key_pre.innerText = base58encode(await crypto.subtle.exportKey('raw', my_keys.publicKey));
     choose_partner_div.style.display = '';
     encrypt_or_decrypt_div.style.display = '';
 
@@ -296,12 +206,12 @@ const update_model = async function() {
     };
     let other_key = await localforage.getItem('other_key');
     partner_public_key_textarea.addEventListener('input', async() => {
-      other_key = base56decode(partner_public_key_textarea.value);
+      other_key = base58decode(partner_public_key_textarea.value);
       localforage.setItem('other_key', other_key);
       await update_symmetric_key();
     });
     if(other_key !== null) {
-      partner_public_key_textarea.value = base56encode(other_key);
+      partner_public_key_textarea.value = base58encode(other_key);
       await update_symmetric_key();
     }
 
