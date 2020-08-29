@@ -1,8 +1,5 @@
 (async() => {
 
-  let iv;
-  let ciphertext;
-
   /*
   Fetch the contents of the "message" textbox, and encode it
   in a form we can use for the encrypt operation.
@@ -19,7 +16,7 @@
   the ciphertext.
   */
   async function encrypt(secretKey, msg) {
-    iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
     let encoded = new TextEncoder().encode(msg);
 
     const ciphertext = await window.crypto.subtle.encrypt(
@@ -31,8 +28,11 @@
       encoded
     );
 
-    let buffer = new Uint8Array(ciphertext, 0, 5);
-    return base56encode(ciphertext);
+    const iv_ciphertext = new Uint8Array(12 + ciphertext.byteLength);
+    iv_ciphertext.set(iv, 0);
+    iv_ciphertext.set(new Uint8Array(ciphertext), 12);
+
+    return base56encode(iv_ciphertext.buffer);
   }
 
   /*
@@ -44,13 +44,14 @@
   */
   async function decrypt(secretKey, cipher) {
     try {
+      const arraybuffer = base56decode(cipher);
       let decrypted = await window.crypto.subtle.decrypt(
         {
           name: "AES-GCM",
-          iv: iv
+          iv: arraybuffer.slice(0, 12)
         },
         secretKey,
-        base56decode(cipher)
+        arraybuffer.slice(12)
       );
 
       let dec = new TextDecoder();
