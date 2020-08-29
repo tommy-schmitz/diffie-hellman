@@ -119,8 +119,6 @@
     });
   }
 
-//  agreeSharedSecretKey();
-
 
 await new Promise((resolve) => {
   window.onload = resolve;
@@ -164,18 +162,11 @@ const update_model = async function() {
       console.log('3');
       const keys = await window.crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-384"}, false, ["deriveKey"]);
       console.log('2');
-/**
-      const x = {
-        publicKey: await crypto.subtle.exportKey('raw', keys.publicKey),
-        privateKey: await crypto.subtle.exportKey('pkcs8', keys.privateKey),
-      };
-/**/
       const x = keys;
       console.log(x.publicKey);
       console.log(x.privateKey);
       console.log('1');
       await localforage.setItem('my_keys', x);
-//      await localforage.setItem('my private key', await crypto.subtle.exportKey('pkcs8', keys.privateKey));
       await update_model();
     });
   } else {
