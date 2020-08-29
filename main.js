@@ -66,8 +66,8 @@
   - our ECDH private key
   - their ECDH public key
   */
-  async function deriveSecretKey(privateKey, publicKey) {
-    const result = await window.crypto.subtle.deriveKey(
+  function deriveSecretKey(privateKey, publicKey) {
+    return window.crypto.subtle.deriveKey(
       {
         name: "ECDH",
         public: publicKey
@@ -77,11 +77,9 @@
         name: "AES-GCM",
         length: 256
       },
-      true,
+      false,
       ["encrypt", "decrypt"]
     );
-    console.log(await crypto.subtle.exportKey('raw', result));
-    return result;
   }
 
   async function agreeSharedSecretKey() {
@@ -295,7 +293,6 @@ const update_model = async function() {
           []
         )
       );
-      console.log(symmetric_key);
     };
     let other_key = await localforage.getItem('other_key');
     partner_public_key_textarea.addEventListener('input', async() => {
