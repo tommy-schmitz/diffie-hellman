@@ -43,22 +43,18 @@
   update the "decryptedValue" box with an error message.
   */
   async function decrypt(secretKey, cipher) {
-    try {
-      const arraybuffer = base58decode(cipher);
-      let decrypted = await window.crypto.subtle.decrypt(
-        {
-          name: "AES-GCM",
-          iv: arraybuffer.slice(0, 12)
-        },
-        secretKey,
-        arraybuffer.slice(12)
-      );
+    const arraybuffer = base58decode(cipher);
+    let decrypted = await window.crypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: arraybuffer.slice(0, 12)
+      },
+      secretKey,
+      arraybuffer.slice(12)
+    );
 
-      let dec = new TextDecoder();
-      return dec.decode(decrypted);
-    } catch (e) {
-      return '(Unable to decrypt this!)';
-    }
+    let dec = new TextDecoder();
+    return dec.decode(decrypted);
   }
 
   /*
@@ -226,7 +222,13 @@ const update_model = async function() {
       ciphertext_pre.innerText = await encrypt(symmetric_key, plaintext_textarea.value);
     });
     decrypt_button.addEventListener('click', async() => {
-      plaintext_pre.innerText = await decrypt(symmetric_key, ciphertext_textarea.value);
+      try {
+        plaintext_pre.style.color = 'black';
+        plaintext_pre.innerText = await decrypt(symmetric_key, ciphertext_textarea.value);
+      } catch(e) {
+        plaintext_pre.style.color = 'red';
+        plaintext_pre.innerText = '(Unable to decrypt this!)';
+      }
     });
   }
 };
