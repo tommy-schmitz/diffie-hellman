@@ -120,6 +120,9 @@
   }
 
 
+let my_keys = null;
+let symmetric_key = null;
+
 await new Promise((resolve) => {
   window.onload = resolve;
 });
@@ -129,6 +132,27 @@ await localforage.setDriver([
   localforage.WEBSQL,
   localforage.LOCALSTORAGE
 ]);
+
+const update_symmetric_key = async function() {
+  try {
+    symmetric_key = await deriveSecretKey(
+      my_keys.privateKey,
+      await crypto.subtle.importKey(
+        'raw',
+        other_key,
+        {
+          name: 'ECDH',
+          namedCurve: 'P-384',
+        },
+        true,
+        []
+      )
+    );
+  } catch(e) {
+    localforage.removeItem('other_key');
+    return await update_model();
+  }
+};
 
 const to_b58 = function(B,A){var d=[],s="",i,j,c,n;for(i in B){j=0,c=B[i];s+=c||s.length^i?"":1;while(j in d||c){n=d[j];n=n?n*256+c:c;c=n/58|0;d[j]=n%58;j++}}while(j--)s+=A[d[j]];return s};
 const from_b58 = function(S,A){var d=[],b=[],i,j,c,n;for(i in S){j=0,c=A.indexOf(S[i]);if(c<0)return undefined;c||b.length^i?i:b.push(0);while(j in d||c){n=d[j];n=n?n*58+c:c;c=n>>8;d[j]=n%256;j++}}while(j--)b.push(d[j]);return new Uint8Array(b)};
@@ -140,97 +164,77 @@ window.base58decode = function(string) {
   return from_b58(string, '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz').buffer;
 };
 
-const update_model = async function() {
+name_input.addEventListener('input', async() => {
+  if(name_input.value.length > 0)
+    generate_button.disabled = false;
+  else
+    generate_button.disabled = true;
+});
 
+generate_button.addEventListener('click', async() => {
+  console.log('3');
+  const keys = await window.crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-384"}, false, ["deriveKey"]);
+  console.log('2');
+  const x = keys;
+  console.log(x.publicKey);
+  console.log(x.privateKey);
+  console.log('1');
+  await localforage.setItem('my_keys', x);
+  await update_model();
+});
+
+partner_public_key_textarea.addEventListener('input', async() => {
+  try {
+    other_key = base58decode(partner_public_key_textarea.value);
+  } catch(e) {
+    return await update_model();
+  }
+  localforage.setItem('other_key', other_key);
+  await update_symmetric_key();
+});
+
+ciphertext_textarea.addEventListener('input', async() => {
+  plaintext_pre.innerText = '';
+});
+plaintext_textarea.addEventListener('input', async() => {
+  ciphertext_pre.innerText = '';
+});
+
+encrypt_button.addEventListener('click', async() => {
+  ciphertext_pre.innerText = await encrypt(symmetric_key, plaintext_textarea.value);
+});
+decrypt_button.addEventListener('click', async() => {
+  try {
+    plaintext_pre.style.color = 'black';
+    plaintext_pre.innerText = await decrypt(symmetric_key, ciphertext_textarea.value);
+  } catch(e) {
+    plaintext_pre.style.color = 'red';
+    plaintext_pre.innerText = '(Unable to decrypt this!)';
+  }
+});
+
+const update_model = async function() {
   generate_keys_div.style.display = 'none';
   my_public_key_div.style.display = 'none';
   choose_partner_div.style.display = 'none';
   encrypt_or_decrypt_div.style.display = 'none';
 
-  const my_keys = await localforage.getItem('my_keys');
+  my_keys = await localforage.getItem('my_keys');
+
   if(my_keys === null) {
     generate_keys_div.style.display = '';
+    return;
+  }
 
-    name_input.addEventListener('input', async() => {
-      if(name_input.value.length > 0)
-        generate_button.disabled = false;
-      else
-        generate_button.disabled = true;
-    });
+  my_public_key_div.style.display = '';
+  my_public_key_pre.innerText = base58encode(await crypto.subtle.exportKey('raw', my_keys.publicKey));
+  choose_partner_div.style.display = '';
 
-    generate_button.addEventListener('click', async() => {
-      console.log('3');
-      const keys = await window.crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-384"}, false, ["deriveKey"]);
-      console.log('2');
-      const x = keys;
-      console.log(x.publicKey);
-      console.log(x.privateKey);
-      console.log('1');
-      await localforage.setItem('my_keys', x);
-      await update_model();
-    });
-  } else {
-    my_public_key_div.style.display = '';
-    my_public_key_pre.innerText = base58encode(await crypto.subtle.exportKey('raw', my_keys.publicKey));
-    choose_partner_div.style.display = '';
-
-    let symmetric_key = null;
-    const update_symmetric_key = async function() {
-      try {
-        symmetric_key = await deriveSecretKey(
-          my_keys.privateKey,
-          await crypto.subtle.importKey(
-            'raw',
-            other_key,
-            {
-              name: 'ECDH',
-              namedCurve: 'P-384',
-            },
-            true,
-            []
-          )
-        );
-      } catch(e) {
-        localforage.removeItem('other_key');
-        return await update_model();
-      }
-    };
-
-    let other_key = await localforage.getItem('other_key');
-    partner_public_key_textarea.addEventListener('input', async() => {
-      try {
-        other_key = base58decode(partner_public_key_textarea.value);
-      } catch(e) {
-        return await update_model();
-      }
-      localforage.setItem('other_key', other_key);
-      await update_symmetric_key();
-    });
-    if(other_key !== null) {
-      encrypt_or_decrypt_div.style.display = '';
-      partner_public_key_textarea.value = base58encode(other_key);
-      await update_symmetric_key();
-    }
-
-    ciphertext_textarea.addEventListener('input', async() => {
-      plaintext_pre.innerText = '';
-    });
-    plaintext_textarea.addEventListener('input', async() => {
-      ciphertext_pre.innerText = '';
-    });
-
-    encrypt_button.addEventListener('click', async() => {
-      ciphertext_pre.innerText = await encrypt(symmetric_key, plaintext_textarea.value);
-    });
-    decrypt_button.addEventListener('click', async() => {
-      try {
-        plaintext_pre.style.color = 'black';
-        plaintext_pre.innerText = await decrypt(symmetric_key, ciphertext_textarea.value);
-      } catch(e) {
-        plaintext_pre.style.color = 'red';
-        plaintext_pre.innerText = '(Unable to decrypt this!)';
-      }
-    });
+  let other_key = await localforage.getItem('other_key');
+  if(other_key !== null) {
+    encrypt_or_decrypt_div.style.display = '';
+    partner_public_key_textarea.value = base58encode(other_key);
+    await update_symmetric_key();
   }
 };
 await update_model();
