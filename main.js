@@ -166,7 +166,7 @@ const update_model = async function() {
 
     generate_button.addEventListener('click', async() => {
       console.log('3');
-      const keys = await window.crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-384"}, true, ["deriveKey"]);
+      const keys = await window.crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-384"}, false, ["deriveKey"]);
       console.log('2');
 /**
       const x = {
