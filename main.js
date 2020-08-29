@@ -182,31 +182,41 @@ const update_model = async function() {
     my_public_key_div.style.display = '';
     my_public_key_pre.innerText = base58encode(await crypto.subtle.exportKey('raw', my_keys.publicKey));
     choose_partner_div.style.display = '';
-    encrypt_or_decrypt_div.style.display = '';
 
     let symmetric_key = null;
     const update_symmetric_key = async function() {
-      symmetric_key = await deriveSecretKey(
-        my_keys.privateKey,
-        await crypto.subtle.importKey(
-          'raw',
-          other_key,
-          {
-            name: 'ECDH',
-            namedCurve: 'P-384',
-          },
-          true,
-          []
-        )
-      );
+      try {
+        symmetric_key = await deriveSecretKey(
+          my_keys.privateKey,
+          await crypto.subtle.importKey(
+            'raw',
+            other_key,
+            {
+              name: 'ECDH',
+              namedCurve: 'P-384',
+            },
+            true,
+            []
+          )
+        );
+      } catch(e) {
+        localforage.removeItem('other_key');
+        return await update_model();
+      }
     };
+
     let other_key = await localforage.getItem('other_key');
     partner_public_key_textarea.addEventListener('input', async() => {
-      other_key = base58decode(partner_public_key_textarea.value);
+      try {
+        other_key = base58decode(partner_public_key_textarea.value);
+      } catch(e) {
+        return await update_model();
+      }
       localforage.setItem('other_key', other_key);
       await update_symmetric_key();
     });
     if(other_key !== null) {
+      encrypt_or_decrypt_div.style.display = '';
       partner_public_key_textarea.value = base58encode(other_key);
       await update_symmetric_key();
     }
