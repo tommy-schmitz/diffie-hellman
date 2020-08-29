@@ -57,8 +57,7 @@
       let dec = new TextDecoder();
       return dec.decode(decrypted);
     } catch (e) {
-      decryptedValue.classList.add("error");
-      decryptedValue.textContent = "*** Decryption error ***";
+      return '(Unable to decrypt this!)';
     }
   }
 
