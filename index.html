@@ -33,14 +33,15 @@
     <div id="choose_partner_div">
       Next, paste your partner's public key in here:
       <textarea id="partner_public_key_textarea"></textarea>
-      <br />
-      Or select from a list of public keys you've used in the past (this list is also stored in your cookie):
-      <br />
-      <select id="selectbox" size=10></select>
     </div>
 
     <div id="encrypt_or_decrypt_div">
       <textarea id="ciphertext_textarea"></textarea>
+      <pre id="plaintext_pre"></pre>
+      <button id="decrypt_button">Decrypt!</button>
+      <textarea id="plaintext_textarea"></textarea>
+      <pre id="ciphertext_pre"></pre>
+      <button id="encrypt_button">Encrypt!</button>
     </div>
   </body>
 </html>

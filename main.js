@@ -18,16 +18,11 @@
   Update the "ciphertextValue" box with a representation of part of
   the ciphertext.
   */
-  async function encrypt(secretKey) {
-    const ciphertextValue = document.querySelector(".ecdh .ciphertext-value");
-    ciphertextValue.textContent = "";
-    const decryptedValue = document.querySelector(".ecdh .decrypted-value");
-    decryptedValue.textContent = "";
-
+  async function encrypt(secretKey, msg) {
     iv = window.crypto.getRandomValues(new Uint8Array(12));
-    let encoded = getMessageEncoding();
+    let encoded = new TextEncoder().encode(msg);
 
-    ciphertext = await window.crypto.subtle.encrypt(
+    const ciphertext = await window.crypto.subtle.encrypt(
       {
         name: "AES-GCM",
         iv: iv
@@ -37,11 +32,7 @@
     );
 
     let buffer = new Uint8Array(ciphertext, 0, 5);
-    ciphertextValue.classList.add("fade-in");
-    ciphertextValue.addEventListener("animationend", () => {
-      ciphertextValue.classList.remove("fade-in");
-    });
-    ciphertextValue.textContent = `${buffer}...[${ciphertext.byteLength} bytes total]`;
+    return base56encode(ciphertext);
   }
 
   /*
@@ -51,11 +42,7 @@
   If there was an error decrypting,
   update the "decryptedValue" box with an error message.
   */
-  async function decrypt(secretKey) {
-    const decryptedValue = document.querySelector(".ecdh .decrypted-value");
-    decryptedValue.textContent = "";
-    decryptedValue.classList.remove("error");
-
+  async function decrypt(secretKey, cipher) {
     try {
       let decrypted = await window.crypto.subtle.decrypt(
         {
@@ -63,15 +50,11 @@
           iv: iv
         },
         secretKey,
-        ciphertext
+        base56decode(cipher)
       );
 
       let dec = new TextDecoder();
-      decryptedValue.classList.add("fade-in");
-      decryptedValue.addEventListener("animationend", () => {
-        decryptedValue.classList.remove("fade-in");
-      });
-      decryptedValue.textContent = dec.decode(decrypted);
+      return dec.decode(decrypted);
     } catch (e) {
       decryptedValue.classList.add("error");
       decryptedValue.textContent = "*** Decryption error ***";
@@ -260,8 +243,8 @@ const update_model = async function() {
   choose_partner_div.style.display = 'none';
   encrypt_or_decrypt_div.style.display = 'none';
 
-  const my_key = await localforage.getItem('my keys');
-  if(my_key === null) {
+  const my_keys = await localforage.getItem('my_keys');
+  if(my_keys === null) {
     generate_keys_div.style.display = '';
 
     name_input.addEventListener('input', async() => {
@@ -273,40 +256,61 @@ const update_model = async function() {
 
     generate_button.addEventListener('click', async() => {
       console.log('3');
-      const my_keys = await window.crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-384"}, true, ["deriveKey"]);
+      const keys = await window.crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-384"}, true, ["deriveKey"]);
       console.log('2');
 /**
       const x = {
-        publicKey: await crypto.subtle.exportKey('raw', my_keys.publicKey),
-        privateKey: await crypto.subtle.exportKey('pkcs8', my_keys.privateKey),
+        publicKey: await crypto.subtle.exportKey('raw', keys.publicKey),
+        privateKey: await crypto.subtle.exportKey('pkcs8', keys.privateKey),
       };
 /**/
-      const x = my_keys;
+      const x = keys;
       console.log(x.publicKey);
       console.log(x.privateKey);
       console.log('1');
-      await localforage.setItem('my keys', x);
-//      await localforage.setItem('my private key', await crypto.subtle.exportKey('pkcs8', my_keys.privateKey));
+      await localforage.setItem('my_keys', x);
+//      await localforage.setItem('my private key', await crypto.subtle.exportKey('pkcs8', keys.privateKey));
       await update_model();
     });
   } else {
     my_public_key_div.style.display = '';
-    console.log(my_key.publicKey);
-    console.log(await crypto.subtle.exportKey('raw', my_key.publicKey));
-    console.log(String.fromCharCode.apply(null, await crypto.subtle.exportKey('raw', my_key.publicKey)));
-    const x1 = base56encode(await crypto.subtle.exportKey('raw', my_key.publicKey));
-    const x2 = base56decode(x1);
-    console.log(x2);
-    const x3 = base56encode(x2);
-    const x4 = base56decode(x3);
-    console.log(x4);
-    const x5 = base56encode(x4);
-    my_public_key_pre.innerText = `${x1}
-(blah)
-${x3}
-(blah)
-${x5}`;
+    my_public_key_pre.innerText = base56encode(await crypto.subtle.exportKey('raw', my_keys.publicKey));
     choose_partner_div.style.display = '';
+    encrypt_or_decrypt_div.style.display = '';
+
+    let symmetric_key = null;
+    const update_symmetric_key = async function() {
+      symmetric_key = await deriveSecretKey(
+        my_keys.privateKey,
+        await crypto.subtle.importKey(
+          'raw',
+          other_key,
+          {
+            name: 'ECDH',
+            namedCurve: 'P-384',
+          },
+          true,
+          []
+        )
+      );
+    };
+    let other_key = await localforage.getItem('other_key');
+    partner_public_key_textarea.addEventListener('input', async() => {
+      other_key = base56decode(partner_public_key_textarea.value);
+      localforage.setItem('other_key', other_key);
+      await update_symmetric_key();
+    });
+    if(other_key !== null) {
+      partner_public_key_textarea.value = base56encode(other_key);
+      await update_symmetric_key();
+    }
+
+    encrypt_button.addEventListener('click', async() => {
+      ciphertext_pre.innerText = await encrypt(symmetric_key, plaintext_textarea.value);
+    });
+    decrypt_button.addEventListener('click', async() => {
+      plaintext_pre.innerText = await decrypt(symmetric_key, ciphertext_textarea.value);
+    });
   }
 };
 await update_model();
