@@ -305,6 +305,13 @@ const update_model = async function() {
       await update_symmetric_key();
     }
 
+    ciphertext_textarea.addEventListener('input', async() => {
+      plaintext_pre.innerText = '';
+    });
+    plaintext_textarea.addEventListener('input', async() => {
+      ciphertext_pre.innerText = '';
+    });
+
     encrypt_button.addEventListener('click', async() => {
       ciphertext_pre.innerText = await encrypt(symmetric_key, plaintext_textarea.value);
     });
