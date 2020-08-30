@@ -1,3 +1,10 @@
+// TODO:
+//  * Fix behavior when invalid partner public key is entered
+//  * Either remove the requirement of entering your name, or ...
+//  * Add support for saving multiple public keys, and auto-attach name to public keys.
+//  * readonly textarea
+//  * mobile css
+
 (async() => {
 
   /*
