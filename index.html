@@ -27,7 +27,7 @@
     <div id="my_public_key_div">
       Your public key:
       <br />
-      <pre id="my_public_key_pre"></pre>
+      <textarea readonly id="my_public_key_readonly"></textarea>
       <br />
       Copy and paste your public key somewhere where your partner can find it.
       <hr />
@@ -35,18 +35,23 @@
 
     <div id="choose_partner_div">
       Next, paste your partner's public key in here:
+      <br />
       <textarea id="partner_public_key_textarea"></textarea>
       <hr />
     </div>
 
     <div id="encrypt_or_decrypt_div">
       <textarea id="ciphertext_textarea"></textarea>
-      <pre id="plaintext_pre"></pre>
+      <br />
       <button id="decrypt_button">Decrypt!</button>
+      <br />
+      <textarea readonly id="plaintext_readonly"></textarea>
       <hr />
       <textarea id="plaintext_textarea"></textarea>
-      <pre id="ciphertext_pre"></pre>
+      <br />
       <button id="encrypt_button">Encrypt!</button>
+      <br />
+      <textarea readonly id="ciphertext_readonly"></textarea>
     </div>
   </body>
 </html>

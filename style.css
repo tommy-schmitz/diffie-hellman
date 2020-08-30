@@ -7,3 +7,11 @@ h1 {
   color: green;
 //  margin-left: .5rem;
 }
+
+textarea {
+  width: 95%;
+}
+
+textarea[readonly] {
+  background-color: #eeeeee;
+}

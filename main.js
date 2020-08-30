@@ -179,24 +179,46 @@ setInterval(async() => {
   }
 }, 250);
 
+const update_styles = function() {
+  {
+    const style = ciphertext_readonly.style;
+    if(ciphertext_readonly.value.length > 0)
+      style.visibility = '';
+    else
+      style.visibility = 'hidden';
+  }
+
+  {
+    const style = plaintext_readonly.style;
+    if(plaintext_readonly.value.length > 0)
+      style.visibility = '';
+    else
+      style.visibility = 'hidden';
+  }
+};
+
 ciphertext_textarea.addEventListener('input', async() => {
-  plaintext_pre.innerText = '';
+  plaintext_readonly.value = '';
+  update_styles();
 });
 plaintext_textarea.addEventListener('input', async() => {
-  ciphertext_pre.innerText = '';
+  ciphertext_readonly.value = '';
+  update_styles();
 });
 
 encrypt_button.addEventListener('click', async() => {
-  ciphertext_pre.innerText = await encrypt(symmetric_key, plaintext_textarea.value);
+  ciphertext_readonly.value = await encrypt(symmetric_key, plaintext_textarea.value);
+  update_styles();
 });
 decrypt_button.addEventListener('click', async() => {
   try {
-    plaintext_pre.style.color = 'black';
-    plaintext_pre.innerText = await decrypt(symmetric_key, ciphertext_textarea.value);
+    plaintext_readonly.style.color = 'black';
+    plaintext_readonly.value = await decrypt(symmetric_key, ciphertext_textarea.value);
   } catch(e) {
-    plaintext_pre.style.color = 'red';
-    plaintext_pre.innerText = '(Unable to decrypt this!)';
+    plaintext_readonly.style.color = 'red';
+    plaintext_readonly.value = '(Unable to decrypt this!)';
   }
+  update_styles();
 });
 
 const update_model = async function() {
@@ -237,7 +259,7 @@ const update_model = async function() {
   }
 
   my_public_key_div.style.display = '';
-  my_public_key_pre.innerText = base58encode(my_public_key_buffer);
+  my_public_key_readonly.value = base58encode(my_public_key_buffer);
 
   choose_partner_div.style.display = '';
 
@@ -247,6 +269,7 @@ const update_model = async function() {
   }
 };
 await update_model();
+update_styles();
 
 
 })();
