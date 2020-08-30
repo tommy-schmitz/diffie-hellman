@@ -133,27 +133,6 @@ await localforage.setDriver([
   localforage.LOCALSTORAGE
 ]);
 
-const update_symmetric_key = async function() {
-  try {
-    symmetric_key = await deriveSecretKey(
-      my_keys.privateKey,
-      await crypto.subtle.importKey(
-        'raw',
-        other_key,
-        {
-          name: 'ECDH',
-          namedCurve: 'P-384',
-        },
-        true,
-        []
-      )
-    );
-  } catch(e) {
-    localforage.removeItem('other_key');
-    return await update_model();
-  }
-};
-
 const to_b58 = function(B,A){var d=[],s="",i,j,c,n;for(i in B){j=0,c=B[i];s+=c||s.length^i?"":1;while(j in d||c){n=d[j];n=n?n*256+c:c;c=n/58|0;d[j]=n%58;j++}}while(j--)s+=A[d[j]];return s};
 const from_b58 = function(S,A){var d=[],b=[],i,j,c,n;for(i in S){j=0,c=A.indexOf(S[i]);if(c<0)return undefined;c||b.length^i?i:b.push(0);while(j in d||c){n=d[j];n=n?n*58+c:c;c=n>>8;d[j]=n%256;j++}}while(j--)b.push(d[j]);return new Uint8Array(b)};
 
@@ -183,15 +162,17 @@ generate_button.addEventListener('click', async() => {
   await update_model();
 });
 
+let ppktv_dirty = false;
 partner_public_key_textarea.addEventListener('input', async() => {
-  try {
-    other_key = base58decode(partner_public_key_textarea.value);
-  } catch(e) {
-    return await update_model();
-  }
-  localforage.setItem('other_key', other_key);
-  await update_symmetric_key();
+  ppktv_dirty = true;
 });
+setInterval(async() => {
+  if(ppktv_dirty) {
+    ppktv_dirty = false;
+    await localforage.setItem('partner_public_key_textarea.value', partner_public_key_textarea.value);
+    await update_model();
+  }
+}, 250);
 
 ciphertext_textarea.addEventListener('input', async() => {
   plaintext_pre.innerText = '';
@@ -214,12 +195,36 @@ decrypt_button.addEventListener('click', async() => {
 });
 
 const update_model = async function() {
+  my_keys = await localforage.getItem('my_keys');
+  const my_public_key_buffer = my_keys!==null ? await crypto.subtle.exportKey('raw', my_keys.publicKey) : null;
+  const ppktv = await localforage.getItem('partner_public_key_textarea.value');
+  let other_key = null;
+  try {
+    other_key = base58decode(ppktv);
+  } catch {}
+  symmetric_key = null;
+  if(other_key !== null) {
+    try {
+      symmetric_key = await deriveSecretKey(
+        my_keys.privateKey,
+        await crypto.subtle.importKey(
+          'raw',
+          other_key,
+          {
+            name: 'ECDH',
+            namedCurve: 'P-384',
+          },
+          true,
+          []
+        )
+      );
+    } catch {}
+  }
+
   generate_keys_div.style.display = 'none';
   my_public_key_div.style.display = 'none';
   choose_partner_div.style.display = 'none';
   encrypt_or_decrypt_div.style.display = 'none';
-
-  my_keys = await localforage.getItem('my_keys');
 
   if(my_keys === null) {
     generate_keys_div.style.display = '';
@@ -227,14 +232,13 @@ const update_model = async function() {
   }
 
   my_public_key_div.style.display = '';
-  my_public_key_pre.innerText = base58encode(await crypto.subtle.exportKey('raw', my_keys.publicKey));
+  my_public_key_pre.innerText = base58encode(my_public_key_buffer);
+
   choose_partner_div.style.display = '';
 
-  let other_key = await localforage.getItem('other_key');
-  if(other_key !== null) {
+  if(symmetric_key !== null) {
     encrypt_or_decrypt_div.style.display = '';
     partner_public_key_textarea.value = base58encode(other_key);
-    await update_symmetric_key();
   }
 };
 await update_model();
