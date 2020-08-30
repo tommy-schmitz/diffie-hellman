@@ -1,3 +1,6 @@
+// TODO:
+//  * Save public key of more than one partner in localforage
+
 (async() => {
 
   /*
