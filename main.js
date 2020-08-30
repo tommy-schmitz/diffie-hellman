@@ -148,13 +148,6 @@ window.base58decode = function(string) {
   return from_b58(string, '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz').buffer;
 };
 
-name_input.addEventListener('input', async() => {
-  if(name_input.value.length > 0)
-    generate_button.disabled = false;
-  else
-    generate_button.disabled = true;
-});
-
 generate_button.addEventListener('click', async() => {
   console.log('3');
   const keys = await window.crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-384"}, false, ["deriveKey"]);
